@@ -1,0 +1,11 @@
+.venv
+output
+.git
+.vercel
+run.log
+__pycache__
+*.pyc
+.env
+.env.local
+credentials.json
+node_modules

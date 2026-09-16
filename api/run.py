@@ -1,11 +1,9 @@
-"""Vercel serverless function - web wrapper around the food image agent.
+"""POST /api/run?limit=N - web demo of the food image agent.
 
-POST /api/run?limit=N   body: raw .xlsx bytes  ->  ZIP (images + report)
-GET  /api/health        ->  JSON status
-
-The full 260-item batch is a CLI job (python main.py); this endpoint is a
-live demo capped at DEMO_MAX_ITEMS items per request so it fits inside the
-serverless execution limit.
+Body: raw .xlsx bytes. Response: ZIP with the processed images, the
+processing report (CSV) and a summary. Capped at DEMO_MAX_ITEMS items so a
+run fits inside the 60 s serverless limit; the full 260-item batch is a CLI
+job (python main.py). Drive upload is disabled here (dry-run).
 """
 
 import io
@@ -21,7 +19,6 @@ MAX_UPLOAD_MB = 5
 
 
 class handler(BaseHTTPRequestHandler):
-    # ------------------------------------------------------------- helpers
     def _send_json(self, code: int, obj: dict):
         body = json.dumps(obj).encode()
         self.send_response(code)
@@ -30,24 +27,14 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *args):  # keep function logs clean
+    def log_message(self, *args):
         pass
 
-    # ---------------------------------------------------------------- GET
     def do_GET(self):
-        if self.path.startswith("/api/health"):
-            self._send_json(200, {
-                "status": "ok",
-                "agent": "food-image-agent",
-                "max_items_per_run": MAX_ITEMS,
-            })
-        else:
-            self._send_json(404, {"error": "not found"})
+        self._send_json(200, {"endpoint": "POST /api/run?limit=N",
+                              "body": "raw .xlsx bytes", "returns": "application/zip"})
 
-    # --------------------------------------------------------------- POST
     def do_POST(self):
-        if not self.path.startswith("/api/run"):
-            return self._send_json(404, {"error": "not found"})
         try:
             length = int(self.headers.get("Content-Length") or 0)
         except ValueError:
@@ -76,7 +63,6 @@ class handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
-    # -------------------------------------------------------------- agent
     @staticmethod
     def _run_agent(xlsx_bytes: bytes, limit: int) -> bytes:
         from agent.config import Config
