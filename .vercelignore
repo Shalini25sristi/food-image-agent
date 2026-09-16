@@ -9,3 +9,4 @@ __pycache__
 .env.local
 credentials.json
 node_modules
+main.py
