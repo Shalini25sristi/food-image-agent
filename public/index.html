@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Food Image Agent - Automated Menu Image Collection</title>
+<style>
+  :root { --accent:#e8590c; --bg:#fffaf5; --card:#fff; --text:#2b2118; }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         background:var(--bg); color:var(--text); line-height:1.55; }
+  header { background:linear-gradient(135deg,#e8590c,#f08c3c); color:#fff;
+           padding:3rem 1.5rem 2.5rem; text-align:center; }
+  header h1 { font-size:2rem; margin-bottom:.4rem; }
+  header p { opacity:.92; max-width:760px; margin:0 auto; }
+  main { max-width:1000px; margin:0 auto; padding:2rem 1.25rem 4rem; }
+  .card { background:var(--card); border:1px solid #f3e2cf; border-radius:14px;
+          padding:1.6rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(120,72,20,.06); }
+  .card h2 { font-size:1.25rem; margin-bottom:.35rem; }
+  .card .sub { color:#8a7460; font-size:.92rem; margin-bottom:1.1rem; }
+  .flow { display:flex; flex-wrap:wrap; gap:.4rem; justify-content:center; margin-top:1.2rem; }
+  .flow span { background:#fff3e6; border:1px solid #f5d7b8; color:#9a4a08;
+               padding:.3rem .7rem; border-radius:999px; font-size:.85rem; font-weight:600; }
+  .flow b { color:#c2a081; align-self:center; }
+  label { display:block; font-weight:600; font-size:.9rem; margin:.9rem 0 .3rem; }
+  input[type=file], select { width:100%; padding:.55rem .7rem; border:1px solid #e5cdb2;
+          border-radius:8px; background:#fffdf9; font-size:.95rem; }
+  button { margin-top:1.1rem; background:var(--accent); color:#fff; border:0;
+           padding:.7rem 1.6rem; border-radius:9px; font-size:1rem; font-weight:700;
+           cursor:pointer; transition:background .15s; }
+  button:hover { background:#d14e06; }
+  button:disabled { background:#c9b8a6; cursor:wait; }
+  #status { margin-top:1rem; font-size:.92rem; white-space:pre-wrap; }
+  #status.ok { color:#2b8a3e; } #status.err { color:#c92a2a; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
+          gap:.9rem; margin-top:1rem; }
+  .grid figure { border:1px solid #f0ddc6; border-radius:10px; overflow:hidden;
+                 background:#fff; }
+  .grid img { width:100%; height:150px; object-fit:cover; display:block; }
+  .grid figcaption { padding:.45rem .6rem; font-size:.82rem; font-weight:600;
+                     color:#6b5744; }
+  .stats { display:flex; gap:1rem; flex-wrap:wrap; margin-top:.8rem; }
+  .stat { background:#fff3e6; border-radius:10px; padding:.7rem 1.1rem; text-align:center; }
+  .stat b { display:block; font-size:1.35rem; color:var(--accent); }
+  .stat span { font-size:.8rem; color:#8a7460; }
+  a.btn { display:inline-block; margin-top:.9rem; margin-right:.6rem; color:var(--accent);
+          font-weight:700; text-decoration:none; border:2px solid var(--accent);
+          padding:.5rem 1.1rem; border-radius:9px; }
+  a.btn:hover { background:var(--accent); color:#fff; }
+  footer { text-align:center; color:#a08a72; font-size:.85rem; padding:1.5rem; }
+  code { background:#f7ecdd; padding:.1rem .35rem; border-radius:5px; font-size:.88em; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🍛 AI Food Image Agent</h1>
+  <p>Automated pipeline that reads food items from Excel, finds suitable images
+     online, validates quality with computer vision, resizes to 1800×1200
+     (&lt;10&nbsp;MB) and uploads them to Google Drive.</p>
+  <div class="flow">
+    <span>Excel</span><b>→</b><span>Image Search</span><b>→</b><span>Quality Check</span><b>→</b>
+    <span>Resize</span><b>→</b><span>Rename</span><b>→</b><span>Google Drive</span><b>→</b><span>Report</span>
+  </div>
+</header>
+
+<main>
+  <div class="card">
+    <h2>Try the agent live</h2>
+    <div class="sub">Upload an .xlsx with a food-item column — the agent processes the
+      first items and returns a ZIP with the processed images + report.
+      (Demo capped at 5 items per run; the full batch runs via CLI.)</div>
+    <label for="file">Excel file (.xlsx)</label>
+    <input type="file" id="file" accept=".xlsx">
+    <label for="limit">Items to process</label>
+    <select id="limit">
+      <option>1</option><option>2</option><option selected>3</option>
+      <option>4</option><option>5</option>
+    </select>
+    <button id="run">Run agent</button>
+    <div id="status"></div>
+  </div>
+
+  <div class="card">
+    <h2>Batch results</h2>
+    <div class="sub">Output of the full automated run over the restaurant's menu sheet.</div>
+    <div class="stats" id="stats"></div>
+    <div class="grid" id="gallery"></div>
+    <a class="btn" href="processing_report.csv" download>Download full report (CSV)</a>
+    <a class="btn" href="https://github.com/Shalini25sristi/food-image-agent" target="_blank" rel="noopener">Source code (GitHub)</a>
+  </div>
+</main>
+
+<footer>Built with Python · OpenCV quality validation · DuckDuckGo/SerpAPI search · Google Drive API</footer>
+
+<script>
+const runBtn = document.getElementById('run');
+const statusEl = document.getElementById('status');
+
+runBtn.addEventListener('click', async () => {
+  const f = document.getElementById('file').files[0];
+  if (!f) { statusEl.className='err'; statusEl.textContent='Please choose an .xlsx file first.'; return; }
+  runBtn.disabled = true;
+  statusEl.className=''; statusEl.textContent='Agent is working — searching, validating and processing images… (can take up to a minute)';
+  try {
+    const limit = document.getElementById('limit').value;
+    const resp = await fetch('/api/run?limit=' + limit, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/octet-stream' },
+      body: f
+    });
+    if (!resp.ok) {
+      const j = await resp.json().catch(() => ({}));
+      throw new Error(j.error || ('HTTP ' + resp.status));
+    }
+    const blob = await resp.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'food_images.zip'; a.click();
+    URL.revokeObjectURL(url);
+    statusEl.className='ok';
+    statusEl.textContent='Done! Downloaded food_images.zip with the processed images and report.';
+  } catch (e) {
+    statusEl.className='err';
+    statusEl.textContent='Error: ' + e.message;
+  } finally {
+    runBtn.disabled = false;
+  }
+});
+
+// Batch results gallery (generated at deploy time)
+fetch('results.json').then(r => r.json()).then(data => {
+  const s = document.getElementById('stats');
+  s.innerHTML =
+    `<div class="stat"><b>${data.total}</b><span>menu items</span></div>` +
+    `<div class="stat"><b>${data.succeeded}</b><span>images processed</span></div>` +
+    `<div class="stat"><b>${data.failed}</b><span>failed</span></div>`;
+  const g = document.getElementById('gallery');
+  g.innerHTML = data.samples.map(n =>
+    `<figure><img loading="lazy" src="gallery/${encodeURIComponent(n)}.jpg" alt="${n}"><figcaption>${n}</figcaption></figure>`
+  ).join('');
+}).catch(() => { document.getElementById('gallery').innerHTML = '<p>No batch results published yet.</p>'; });
+</script>
+</body>
+</html>

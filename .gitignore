@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+output/
+run.log
+.env
+credentials.json
+.vercel
+node_modules/
+*:Zone.Identifier

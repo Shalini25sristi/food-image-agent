@@ -1,0 +1,5 @@
+# Full local setup: everything in requirements.txt plus OpenCV, which enables
+# the saliency-based framing/centring/zoom analysis and smart cropping.
+# (The agent works without it too, with reduced framing checks.)
+-r requirements.txt
+opencv-contrib-python-headless==5.0.0.93
