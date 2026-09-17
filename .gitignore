@@ -9,3 +9,7 @@ credentials.json
 node_modules/
 *:Zone.Identifier
 .env*
+
+.devserver.py
+output_run/
+run_report.*

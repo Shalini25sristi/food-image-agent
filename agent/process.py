@@ -24,6 +24,10 @@ def _salient_centroid(path: str) -> tuple[float, float] | None:
         img = cv2.imread(path)
         if img is None:
             return None
+        h, w = img.shape[:2]
+        scale = 900.0 / max(h, w)
+        if scale < 1.0:
+            img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))))
         sal = cv2.saliency.StaticSaliencySpectralResidual_create()
         ok, smap = sal.computeSaliency(img)
         if not ok:

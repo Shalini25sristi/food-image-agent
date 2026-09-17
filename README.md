@@ -56,13 +56,29 @@ Latest full run over the assignment sheet: **260/260 items processed, 0 failures
 
 ## Live web demo (Vercel)
 
-A serverless wrapper around the agent lives in `api/index.py` with a small
-front-end in `public/`:
+A serverless wrapper around the agent lives in `index.py` with a polished
+single-page front-end in `public/`:
 
-- `GET /` - UI: upload an .xlsx, get back a ZIP with processed images + report
-- `POST /api/run?limit=N` - raw .xlsx body -> ZIP (capped at 5 items per run
-  to fit the 60 s serverless limit; Drive upload is disabled in the demo)
-- `GET /api/health` - status JSON
+- `GET /` - UI. The assignment sheet is **bundled** (`public/assignment_menu.xlsx`
+  + `public/menu.json`), so you can run the agent on it with one click, or
+  upload your own `.xlsx`.
+- `POST /api/run?limit=N&format=json|zip` - raw `.xlsx` body -> JSON with
+  base64 previews + report rows (default UI), or a ZIP with full images +
+  report (`format=zip`). Capped at 5 items per run to fit the 60 s limit;
+  Drive upload is disabled in the demo.
+- `GET /api/search?item=NAME&limit=N` - live image search for one dish,
+  returns candidate URLs (powers the "Search new pics" button).
+- `GET /api/image?url=...&w=440` - server-side image proxy + thumbnail; makes
+  search results display reliably even when the source blocks hotlinking.
+- `GET /api/health` - status JSON (includes whether Google Drive is configured).
+
+The demo disables Google Drive uploads and saves images locally; the UI shows
+a Drive status banner. Set `DRIVE_FOLDER_ID` + a service-account
+`credentials.json` and Drive uploads become active in the CLI (the serverless
+demo stays read-only by design).
+
+Candidate downloads run in parallel and saliency analysis works on a
+downscaled copy, so a 3-5 item demo run completes in well under a minute.
 
 Deploy:
 
@@ -126,7 +142,7 @@ agent/
   drive.py              Google Drive upload (service account)
   report.py             Excel/CSV processing report
   pipeline.py           end-to-end orchestration per food item
-api/index.py            Vercel serverless function (web demo)
+index.py                Vercel serverless function (web demo)
 public/                 demo front-end + batch-run gallery
 vercel.json             Vercel configuration
 sample_input.xlsx       sample input

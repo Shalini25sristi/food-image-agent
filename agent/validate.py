@@ -61,6 +61,13 @@ def _framing_metrics(img: np.ndarray) -> tuple[float, float, float] | None:
     coverage:      fraction of the frame occupied by the subject
                    (very high => excessively zoomed in).
     """
+    # Saliency is scale-invariant but expensive on full-resolution photos, so
+    # analyse a downscaled copy (big speed-up on 12-24 MP images).
+    if cv2 is not None:
+        h, w = img.shape[:2]
+        scale = 800.0 / max(h, w)
+        if scale < 1.0:
+            img = cv2.resize(img, (max(1, int(w * scale)), max(1, int(h * scale))))
     smap = _saliency_map(img)
     if smap is None:
         return None

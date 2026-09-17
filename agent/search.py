@@ -177,7 +177,7 @@ class _DuckDuckGoProvider:
             from duckduckgo_search import DDGS
 
         last_err = None
-        for attempt in range(3):
+        for attempt in range(2):
             try:
                 with DDGS() as ddgs:
                     try:
@@ -196,8 +196,8 @@ class _DuckDuckGoProvider:
                 return [c for c in out if c.url]
             except Exception as e:  # rate limits etc.
                 last_err = e
-                wait = 3 * (attempt + 1)
-                log.warning("DuckDuckGo search failed (%s); retrying in %ds...", e, wait)
+                wait = 1.5 * (attempt + 1)
+                log.warning("DuckDuckGo search failed (%s); retrying in %.1fs...", e, wait)
                 time.sleep(wait)
         raise RuntimeError(f"DuckDuckGo search failed after retries: {last_err}")
 

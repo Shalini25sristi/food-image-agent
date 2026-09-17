@@ -3,142 +3,732 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Food Image Agent - Automated Menu Image Collection</title>
+<title>AI Food Image Agent — Automated Menu Image Collection</title>
+<meta name="description" content="AI agent that reads a restaurant menu from Excel, finds suitable food images online, validates quality with computer vision, resizes to 1800×1200 and uploads to Google Drive.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap"></noscript>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="favicon.svg">
+<link rel="mask-icon" href="favicon.svg" color="#ff7a18">
+<script>document.documentElement.classList.add("js");</script>
 <style>
-  :root { --accent:#e8590c; --bg:#fffaf5; --card:#fff; --text:#2b2118; }
-  * { box-sizing:border-box; margin:0; padding:0; }
-  body { font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-         background:var(--bg); color:var(--text); line-height:1.55; }
-  header { background:linear-gradient(135deg,#e8590c,#f08c3c); color:#fff;
-           padding:3rem 1.5rem 2.5rem; text-align:center; }
-  header h1 { font-size:2rem; margin-bottom:.4rem; }
-  header p { opacity:.92; max-width:760px; margin:0 auto; }
-  main { max-width:1000px; margin:0 auto; padding:2rem 1.25rem 4rem; }
-  .card { background:var(--card); border:1px solid #f3e2cf; border-radius:14px;
-          padding:1.6rem; margin-bottom:2rem; box-shadow:0 2px 10px rgba(120,72,20,.06); }
-  .card h2 { font-size:1.25rem; margin-bottom:.35rem; }
-  .card .sub { color:#8a7460; font-size:.92rem; margin-bottom:1.1rem; }
-  .flow { display:flex; flex-wrap:wrap; gap:.4rem; justify-content:center; margin-top:1.2rem; }
-  .flow span { background:#fff3e6; border:1px solid #f5d7b8; color:#9a4a08;
-               padding:.3rem .7rem; border-radius:999px; font-size:.85rem; font-weight:600; }
-  .flow b { color:#c2a081; align-self:center; }
-  label { display:block; font-weight:600; font-size:.9rem; margin:.9rem 0 .3rem; }
-  input[type=file], select { width:100%; padding:.55rem .7rem; border:1px solid #e5cdb2;
-          border-radius:8px; background:#fffdf9; font-size:.95rem; }
-  button { margin-top:1.1rem; background:var(--accent); color:#fff; border:0;
-           padding:.7rem 1.6rem; border-radius:9px; font-size:1rem; font-weight:700;
-           cursor:pointer; transition:background .15s; }
-  button:hover { background:#d14e06; }
-  button:disabled { background:#c9b8a6; cursor:wait; }
-  #status { margin-top:1rem; font-size:.92rem; white-space:pre-wrap; }
-  #status.ok { color:#2b8a3e; } #status.err { color:#c92a2a; }
-  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(210px,1fr));
-          gap:.9rem; margin-top:1rem; }
-  .grid figure { border:1px solid #f0ddc6; border-radius:10px; overflow:hidden;
-                 background:#fff; }
-  .grid img { width:100%; height:150px; object-fit:cover; display:block; }
-  .grid figcaption { padding:.45rem .6rem; font-size:.82rem; font-weight:600;
-                     color:#6b5744; }
-  .stats { display:flex; gap:1rem; flex-wrap:wrap; margin-top:.8rem; }
-  .stat { background:#fff3e6; border-radius:10px; padding:.7rem 1.1rem; text-align:center; }
-  .stat b { display:block; font-size:1.35rem; color:var(--accent); }
-  .stat span { font-size:.8rem; color:#8a7460; }
-  a.btn { display:inline-block; margin-top:.9rem; margin-right:.6rem; color:var(--accent);
-          font-weight:700; text-decoration:none; border:2px solid var(--accent);
-          padding:.5rem 1.1rem; border-radius:9px; }
-  a.btn:hover { background:var(--accent); color:#fff; }
-  footer { text-align:center; color:#a08a72; font-size:.85rem; padding:1.5rem; }
-  code { background:#f7ecdd; padding:.1rem .35rem; border-radius:5px; font-size:.88em; }
+  :root{
+    --bg:#08090d; --bg-2:#0e1016;
+    --surface:rgba(255,255,255,.035); --surface-2:rgba(255,255,255,.065);
+    --border:rgba(255,255,255,.09); --border-2:rgba(255,255,255,.16);
+    --text:#f4f1ec; --muted:#9aa0ab; --muted-2:#6b7280;
+    --accent:#ff7a18; --accent-2:#ffb347;
+    --good:#34d399; --bad:#f87171; --warn:#fbbf24;
+    --radius:18px; --radius-sm:12px;
+    --shadow:0 20px 60px -20px rgba(0,0,0,.7);
+    --ease:cubic-bezier(.22,1,.36,1);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:'Inter',system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); line-height:1.6;
+    -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  h1,h2,h3,.brand{font-family:'Sora','Inter',system-ui,sans-serif;letter-spacing:-.02em}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  ::selection{background:rgba(255,122,24,.35)}
+
+  /* ---------- scrollbar ---------- */
+  ::-webkit-scrollbar{width:11px;height:11px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:#2a2e38;border-radius:99px;border:3px solid var(--bg)}
+  ::-webkit-scrollbar-thumb:hover{background:#3a3f4b}
+
+  /* ---------- background ---------- */
+  .bg-fx{position:fixed;inset:0;z-index:-1;overflow:hidden;background:
+    radial-gradient(1200px 600px at 80% -10%,rgba(255,122,24,.12),transparent 60%),
+    radial-gradient(900px 500px at 0% 20%,rgba(120,80,255,.10),transparent 55%),
+    linear-gradient(180deg,var(--bg),var(--bg-2))}
+  .blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.5;will-change:transform}
+  .blob.b1{width:520px;height:520px;background:radial-gradient(circle,#ff7a18,transparent 65%);top:-160px;right:-120px;animation:float1 18s var(--ease) infinite}
+  .blob.b2{width:440px;height:440px;background:radial-gradient(circle,#7c5cff,transparent 65%);top:240px;left:-160px;animation:float2 22s var(--ease) infinite}
+  .blob.b3{width:380px;height:380px;background:radial-gradient(circle,#ffb347,transparent 65%);bottom:-140px;left:40%;animation:float1 26s var(--ease) infinite reverse}
+  @keyframes float1{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(-60px,50px,0) scale(1.12)}}
+  @keyframes float2{0%,100%{transform:translate3d(0,0,0) scale(1)}50%{transform:translate3d(70px,-40px,0) scale(1.08)}}
+  .grain{position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.035;
+    background-image:linear-gradient(rgba(255,255,255,.5) 1px,transparent 1px),
+                     linear-gradient(90deg,rgba(255,255,255,.5) 1px,transparent 1px);
+    background-size:64px 64px;mask-image:radial-gradient(circle at 50% 0%,#000,transparent 75%)}
+
+  /* ---------- nav ---------- */
+  header.nav{position:fixed;top:0;left:0;right:0;z-index:100;transition:all .35s var(--ease)}
+  header.nav .inner{max-width:1180px;margin:0 auto;padding:18px 24px;display:flex;align-items:center;gap:16px}
+  header.nav.scrolled{background:rgba(8,9,13,.72);backdrop-filter:blur(18px) saturate(160%);
+    border-bottom:1px solid var(--border);box-shadow:0 8px 40px -20px #000}
+  header.nav.scrolled .inner{padding:12px 24px}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.06rem}
+  .logo{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:1.05rem;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));box-shadow:0 8px 24px -8px var(--accent)}
+  .nav-links{display:flex;gap:6px;margin-left:auto}
+  .nav-links a{padding:8px 14px;border-radius:99px;font-size:.9rem;font-weight:500;color:var(--muted);
+    transition:all .25s var(--ease)}
+  .nav-links a:hover{color:var(--text);background:var(--surface-2)}
+  .nav-cta{display:flex;align-items:center;gap:10px}
+  .ghost{padding:8px 16px;border:1px solid var(--border-2);border-radius:99px;font-size:.86rem;font-weight:600;
+    transition:all .25s var(--ease)}
+  .ghost:hover{background:var(--surface-2);transform:translateY(-1px)}
+
+  /* ---------- layout ---------- */
+  main{max-width:1180px;margin:0 auto;padding:0 24px 80px}
+  section{padding:64px 0}
+  .eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:.78rem;font-weight:700;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--accent-2);margin-bottom:14px}
+  .eyebrow::before{content:"";width:22px;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--accent),var(--accent-2))}
+  h2.title{font-size:clamp(1.6rem,3vw,2.2rem);margin-bottom:10px}
+  p.lead{color:var(--muted);max-width:640px;font-size:1rem}
+
+  /* ---------- hero ---------- */
+  .hero{padding:150px 0 70px;text-align:center;position:relative}
+  .hero .badge{display:inline-flex;align-items:center;gap:9px;padding:7px 15px;border-radius:99px;
+    border:1px solid var(--border-2);background:var(--surface);font-size:.82rem;color:var(--muted);
+    backdrop-filter:blur(10px);margin-bottom:26px}
+  .pulse{width:8px;height:8px;border-radius:50%;background:var(--good);position:relative}
+  .pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;background:var(--good);opacity:.5;animation:pulse 2s ease-out infinite}
+  @keyframes pulse{0%{transform:scale(.6);opacity:.6}100%{transform:scale(2.2);opacity:0}}
+  .hero h1{font-size:clamp(2.3rem,6vw,4rem);line-height:1.05;font-weight:800;margin-bottom:22px}
+  .grad{background:linear-gradient(100deg,var(--accent) 10%,var(--accent-2) 50%,#ffd9a8 90%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;background-size:200% auto;
+    animation:shine 6s linear infinite}
+  @keyframes shine{to{background-position:200% center}}
+  .hero p.sub{color:var(--muted);max-width:680px;margin:0 auto 34px;font-size:1.08rem}
+  .hero-cta{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:52px}
+
+  /* buttons */
+  .btn{position:relative;overflow:hidden;border:0;cursor:pointer;font-family:inherit;font-weight:700;
+    font-size:.95rem;padding:13px 26px;border-radius:99px;display:inline-flex;align-items:center;gap:9px;
+    transition:transform .3s var(--ease),box-shadow .3s var(--ease),background .3s}
+  .btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent-2));color:#1a0f04;
+    box-shadow:0 14px 40px -12px var(--accent)}
+  .btn-primary:hover{transform:translateY(-3px);box-shadow:0 22px 50px -14px var(--accent)}
+  .btn-secondary{background:var(--surface-2);color:var(--text);border:1px solid var(--border-2)}
+  .btn-secondary:hover{transform:translateY(-3px);background:rgba(255,255,255,.1)}
+  .btn:disabled{opacity:.55;cursor:not-allowed;transform:none!important}
+  .ripple{position:absolute;border-radius:50%;transform:scale(0);animation:ripple .6s linear;
+    background:rgba(255,255,255,.45);pointer-events:none}
+  @keyframes ripple{to{transform:scale(4);opacity:0}}
+
+  /* pipeline chips */
+  .pipeline{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-items:center;max-width:840px;margin:0 auto}
+  .pipe{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:99px;font-size:.86rem;font-weight:600;
+    background:var(--surface);border:1px solid var(--border);opacity:0;transform:translateY(14px);
+    animation:rise .7s var(--ease) forwards;backdrop-filter:blur(8px)}
+  .pipe .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+  .pipe-arrow{color:var(--muted-2);font-size:.9rem;animation:fadein .8s ease forwards;opacity:0}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+  @keyframes fadein{to{opacity:1}}
+  .pipe:nth-child(1){animation-delay:.05s}.pipe:nth-child(3){animation-delay:.15s}
+  .pipe:nth-child(5){animation-delay:.25s}.pipe:nth-child(7){animation-delay:.35s}
+  .pipe:nth-child(9){animation-delay:.45s}.pipe:nth-child(11){animation-delay:.55s}
+  .pipe:nth-child(13){animation-delay:.65s}
+  .pipe-arrow:nth-child(2){animation-delay:.1s}.pipe-arrow:nth-child(4){animation-delay:.2s}
+  .pipe-arrow:nth-child(6){animation-delay:.3s}.pipe-arrow:nth-child(8){animation-delay:.4s}
+  .pipe-arrow:nth-child(10){animation-delay:.5s}.pipe-arrow:nth-child(12){animation-delay:.6s}
+
+  /* ---------- cards ---------- */
+  .card{background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));
+    border:1px solid var(--border);border-radius:var(--radius);padding:32px;box-shadow:var(--shadow);
+    backdrop-filter:blur(12px);position:relative;overflow:hidden}
+  .card::before{content:"";position:absolute;top:0;left:0;right:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent)}
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:start}
+  @media(max-width:900px){.grid-2{grid-template-columns:1fr}.nav-links{display:none}}
+
+  /* reveal animation: the hidden state is applied by JS only, so content is
+     never hidden when JS / fonts are slow or unavailable */
+  [data-reveal]{transition:opacity .8s var(--ease),transform .8s var(--ease)}
+  [data-reveal].pre{opacity:0;transform:translateY(26px)}
+  [data-reveal].revealed{opacity:1;transform:none}
+
+  /* stats */
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px}
+  .stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:18px;
+    text-align:center;transition:transform .3s var(--ease),border-color .3s}
+  .stat:hover{transform:translateY(-4px);border-color:var(--border-2)}
+  .stat b{display:block;font-family:'Sora';font-size:clamp(1.25rem,1.7vw,1.9rem);line-height:1.15;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .stat span{font-size:.78rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+
+  /* integrated menu */
+  .file-row{display:flex;align-items:center;gap:14px;padding:16px;border-radius:var(--radius-sm);
+    background:var(--surface);border:1px dashed var(--border-2);margin:22px 0}
+  .file-ico{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-size:1.3rem;
+    background:linear-gradient(135deg,rgba(52,211,153,.2),rgba(52,211,153,.05));border:1px solid rgba(52,211,153,.3)}
+  .file-row .meta{flex:1;min-width:0}
+  .file-row .meta b{display:block;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .file-row .meta span{font-size:.8rem;color:var(--muted)}
+  .tag-ok{font-size:.72rem;font-weight:700;color:var(--good);background:rgba(52,211,153,.12);
+    border:1px solid rgba(52,211,153,.3);padding:4px 10px;border-radius:99px;white-space:nowrap}
+
+  .filter{position:relative;margin:8px 0 16px}
+  .filter input[type="text"]{width:100%;padding:12px 16px 12px 44px;border-radius:12px;
+    background:var(--surface);border:1px solid var(--border);color:var(--text);
+    font-family:inherit;font-size:.92rem;transition:border-color .25s}
+  .filter input[type="text"]:focus{outline:none;border-color:var(--accent)}
+  .filter::before{content:"";position:absolute;left:15px;top:50%;transform:translateY(-50%);
+    width:16px;height:16px;background:no-repeat center/contain
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239aa0ab' stroke-width='2.2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M21 21l-4.2-4.2'/%3E%3C/svg%3E")}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;max-height:230px;overflow-y:auto;padding:4px 6px 4px 0}
+  .chip{padding:6px 13px;border-radius:99px;background:var(--surface);border:1px solid var(--border);
+    font-size:.82rem;color:var(--muted);cursor:pointer;transition:all .22s var(--ease);white-space:nowrap;
+    animation:chipin .4s var(--ease) backwards}
+  .chip:hover{color:var(--text);border-color:var(--accent);background:rgba(255,122,24,.1);transform:translateY(-2px)}
+  @keyframes chipin{from{opacity:0;transform:scale(.9)}}
+  .chips::-webkit-scrollbar{width:8px}
+
+  /* controls */
+  .controls{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-top:22px}
+  .field{display:flex;flex-direction:column;gap:7px;flex:1;min-width:150px}
+  .field label{font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  select,input[type=text]{width:100%;padding:12px 14px;border-radius:12px;background:var(--surface);
+    border:1px solid var(--border);color:var(--text);font-family:inherit;font-size:.92rem;transition:border-color .25s}
+  select:focus,input[type=text]:focus{outline:none;border-color:var(--accent)}
+  select option{background:#12141b}
+  .file-btn{cursor:pointer}
+  .status{margin-top:16px;font-size:.9rem;color:var(--muted);min-height:1.3em}
+  .status.ok{color:var(--good)}.status.err{color:var(--bad)}
+  .drive-note{display:flex;align-items:flex-start;gap:9px;font-size:.82rem;color:var(--muted);
+    line-height:1.5;background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:10px 13px;margin-bottom:16px}
+  .drive-note .dot-i{width:8px;height:8px;border-radius:50%;background:var(--muted-2);flex:none;margin-top:5px}
+  .drive-note.ok{color:var(--good);border-color:rgba(52,211,153,.3)}
+  .drive-note.ok .dot-i{background:var(--good)}
+  .drive-note.warn{color:var(--warn);border-color:rgba(251,191,36,.3)}
+  .drive-note.warn .dot-i{background:var(--warn)}
+
+  /* progress */
+  .progress{height:6px;border-radius:99px;background:var(--surface-2);overflow:hidden;margin-top:16px;display:none}
+  .progress.on{display:block}
+  .progress .bar{height:100%;width:0;border-radius:99px;
+    background:linear-gradient(90deg,var(--accent),var(--accent-2));transition:width .5s var(--ease);position:relative}
+  .progress .bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5),transparent);
+    animation:shimmer 1.3s linear infinite}
+  @keyframes shimmer{to{transform:translateX(100%)}}
+
+  /* results grid */
+  .results{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:24px}
+  .result{border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);background:var(--surface);
+    opacity:0;transform:translateY(18px) scale(.97);animation:pop .6s var(--ease) forwards}
+  @keyframes pop{to{opacity:1;transform:none}}
+  .result .thumb{position:relative;aspect-ratio:3/2;overflow:hidden;background:#14161d}
+  .result img{width:100%;height:100%;object-fit:cover;transition:transform .7s var(--ease)}
+  .result:hover img{transform:scale(1.07)}
+  .result .body{padding:12px 14px}
+  .result .body b{font-size:.86rem;display:block;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pill{display:inline-block;font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:99px}
+  .pill.ok{color:var(--good);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3)}
+  .pill.warn{color:var(--warn);background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3)}
+  .pill.bad{color:var(--bad);background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.3)}
+  .result .sz{font-size:.72rem;color:var(--muted-2);margin-left:8px}
+
+  /* photo grid (search) */
+  .photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:14px;margin-top:24px}
+  .photo{position:relative;display:block;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);
+    aspect-ratio:3/2;background:#14161d;opacity:0;transform:scale(.95);animation:pop .55s var(--ease) forwards;
+    transition:border-color .3s,transform .3s var(--ease)}
+  .photo:hover{border-color:var(--accent);transform:translateY(-4px)}
+  .photo img{width:100%;height:100%;object-fit:cover;transition:transform .7s var(--ease)}
+  .photo.broken{display:none}
+  .photo:hover img{transform:scale(1.08)}
+  .photo .overlay{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:flex-end;gap:6px;
+    padding:12px;background:linear-gradient(0deg,rgba(0,0,0,.85),transparent 65%);opacity:0;transition:opacity .35s}
+  .photo:hover .overlay{opacity:1}
+  .photo .overlay b{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .photo .overlay span{font-size:.7rem;color:#cfd3da}
+  .quickpicks{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+
+  /* skeletons */
+  .skel{border-radius:var(--radius-sm);border:1px solid var(--border);aspect-ratio:3/2;overflow:hidden;
+    background:linear-gradient(100deg,#14161d 30%,#1e222c 50%,#14161d 70%);background-size:200% 100%;
+    animation:skel 1.4s linear infinite}
+  @keyframes skel{to{background-position:-200% 0}}
+
+  /* toast */
+  #toasts{position:fixed;right:22px;bottom:22px;z-index:200;display:flex;flex-direction:column;gap:10px}
+  .toast{padding:13px 18px;border-radius:12px;background:rgba(20,22,29,.95);border:1px solid var(--border-2);
+    box-shadow:var(--shadow);font-size:.88rem;display:flex;align-items:center;gap:10px;backdrop-filter:blur(14px);
+    animation:toastin .45s var(--ease);max-width:340px}
+  .toast.out{animation:toastout .35s var(--ease) forwards}
+  .toast .t-ico{font-size:1.05rem}
+  @keyframes toastin{from{opacity:0;transform:translateX(40px)}}
+  @keyframes toastout{to{opacity:0;transform:translateX(40px)}}
+
+  /* gallery */
+  .gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px;margin-top:24px}
+  .gallery figure{border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--border);background:var(--surface);
+    transition:transform .35s var(--ease),border-color .3s}
+  .gallery figure:hover{transform:translateY(-5px);border-color:var(--accent)}
+  .gallery img{aspect-ratio:3/2;object-fit:cover;width:100%;transition:transform .7s var(--ease)}
+  .gallery figure:hover img{transform:scale(1.07)}
+  .gallery figcaption{padding:10px 13px;font-size:.8rem;font-weight:600;color:var(--muted);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+  .actions{display:flex;flex-wrap:wrap;gap:12px;margin-top:26px}
+  footer{border-top:1px solid var(--border);padding:38px 24px;text-align:center;color:var(--muted-2);font-size:.85rem}
+  footer .social{display:flex;gap:16px;justify-content:center;margin-bottom:14px}
+  footer a:hover{color:var(--accent)}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
-<header>
-  <h1>🍛 AI Food Image Agent</h1>
-  <p>Automated pipeline that reads food items from Excel, finds suitable images
-     online, validates quality with computer vision, resizes to 1800×1200
-     (&lt;10&nbsp;MB) and uploads them to Google Drive.</p>
-  <div class="flow">
-    <span>Excel</span><b>→</b><span>Image Search</span><b>→</b><span>Quality Check</span><b>→</b>
-    <span>Resize</span><b>→</b><span>Rename</span><b>→</b><span>Google Drive</span><b>→</b><span>Report</span>
+
+<div class="bg-fx">
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+</div>
+<div class="grain"></div>
+
+<header class="nav" id="nav">
+  <div class="inner">
+    <a href="#top" class="brand"><span class="logo">🍛</span> Food Image Agent</a>
+    <nav class="nav-links">
+      <a href="#run">Live demo</a>
+      <a href="#menu">Menu</a>
+      <a href="#search">Search images</a>
+      <a href="#results">Results</a>
+    </nav>
+    <div class="nav-cta">
+      <a class="ghost" href="https://github.com/Shalini25sristi/food-image-agent" target="_blank" rel="noopener">GitHub ↗</a>
+    </div>
   </div>
 </header>
 
-<main>
-  <div class="card">
-    <h2>Try the agent live</h2>
-    <div class="sub">Upload an .xlsx with a food-item column — the agent processes the
-      first items and returns a ZIP with the processed images + report.
-      (Demo capped at 5 items per run; the full batch runs via CLI.)</div>
-    <label for="file">Excel file (.xlsx)</label>
-    <input type="file" id="file" accept=".xlsx">
-    <label for="limit">Items to process</label>
-    <select id="limit">
-      <option>1</option><option>2</option><option selected>3</option>
-      <option>4</option><option>5</option>
-    </select>
-    <button id="run">Run agent</button>
-    <div id="status"></div>
-  </div>
+<main id="top">
 
-  <div class="card">
-    <h2>Batch results</h2>
-    <div class="sub">Output of the full automated run over the restaurant's menu sheet.</div>
-    <div class="stats" id="stats"></div>
-    <div class="grid" id="gallery"></div>
-    <a class="btn" href="processing_report.csv" download>Download full report (CSV)</a>
-    <a class="btn" href="https://github.com/Shalini25sristi/food-image-agent" target="_blank" rel="noopener">Source code (GitHub)</a>
-  </div>
+  <!-- HERO -->
+  <section class="hero">
+    <div class="badge" data-reveal><span class="pulse"></span> AI Agent · Computer Vision · Google Drive</div>
+    <h1 data-reveal>Turn your menu into<br><span class="grad">beautiful food images</span></h1>
+    <p class="sub" data-reveal>Reads every dish from Excel, finds a suitable photo online,
+      validates its quality with computer vision, crops &amp; resizes it to 1800×1200 (&lt;10&nbsp;MB)
+      and uploads it to Google Drive — automatically.</p>
+    <div class="hero-cta" data-reveal>
+      <button class="btn btn-primary" onclick="document.getElementById('run').scrollIntoView()">Run the agent →</button>
+      <button class="btn btn-secondary" onclick="document.getElementById('search').scrollIntoView()">Search new pictures</button>
+    </div>
+    <div class="pipeline" data-reveal>
+      <span class="pipe"><span class="dot"></span>Excel</span><span class="pipe-arrow">→</span>
+      <span class="pipe"><span class="dot"></span>Image Search</span><span class="pipe-arrow">→</span>
+      <span class="pipe"><span class="dot"></span>Quality Check</span><span class="pipe-arrow">→</span>
+      <span class="pipe"><span class="dot"></span>Resize</span><span class="pipe-arrow">→</span>
+      <span class="pipe"><span class="dot"></span>Rename</span><span class="pipe-arrow">→</span>
+      <span class="pipe"><span class="dot"></span>Google Drive</span><span class="pipe-arrow">→</span>
+      <span class="pipe"><span class="dot"></span>Report</span>
+    </div>
+  </section>
+
+  <!-- RUN / INTEGRATED MENU -->
+  <section id="run">
+    <div data-reveal>
+      <div class="eyebrow">Live demo</div>
+      <h2 class="title">Run the agent on the integrated menu</h2>
+      <p class="lead">The assignment sheet is already bundled with this site — no upload needed.
+        Pick how many dishes to process and the agent will search, validate and process them in one go.</p>
+    </div>
+
+    <div class="grid-2" style="margin-top:30px">
+      <!-- left: menu info -->
+      <div class="card" data-reveal>
+        <div class="eyebrow">Integrated spreadsheet</div>
+        <div class="file-row">
+          <div class="file-ico">📊</div>
+          <div class="meta">
+            <b>Assignment - Ai agent - Sheet1.xlsx</b>
+            <span id="menuFileMeta">Loading menu…</span>
+          </div>
+          <span class="tag-ok">Bundled</span>
+        </div>
+        <div class="stats" id="menuStats"></div>
+        <div class="filter"><input type="text" id="menuFilter" placeholder="Filter dishes…" aria-label="Filter dishes"></div>
+        <div class="chips" id="menuChips"></div>
+        <div class="actions">
+          <a class="btn btn-secondary" href="assignment_menu.xlsx" download>↓ Download sheet</a>
+          <a class="btn btn-secondary" href="processing_report.xlsx" download>↓ Full report (Excel)</a>
+        </div>
+      </div>
+
+      <!-- right: controls + results -->
+      <div class="card" data-reveal>
+        <div class="eyebrow">Agent control</div>
+        <div class="drive-note" id="driveNote"><span class="dot-i"></span><span>Checking Google Drive…</span></div>
+        <div class="controls">
+          <div class="field">
+            <label for="runLimit">Items to process</label>
+            <select id="runLimit">
+              <option>1</option><option>2</option><option selected>3</option>
+              <option>4</option><option>5</option>
+            </select>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" id="runMenuBtn">▶ Run on integrated menu</button>
+          <label class="btn btn-secondary file-btn">⤒ Upload your own .xlsx
+            <input type="file" id="file" accept=".xlsx" hidden>
+          </label>
+        </div>
+        <div class="status" id="runStatus">Ready. Demo is capped at 5 items per run.</div>
+        <div class="progress" id="runProgress"><div class="bar"></div></div>
+        <div class="results" id="runResults"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SEARCH NEW PICS -->
+  <section id="search">
+    <div data-reveal>
+      <div class="eyebrow">Fresh images</div>
+      <h2 class="title">Search new pictures</h2>
+      <p class="lead">Not happy with a photo? Search the web for fresh candidates for any dish —
+        pick a name from the menu or type your own.</p>
+    </div>
+
+    <div class="card" data-reveal style="margin-top:30px">
+      <div class="controls">
+        <div class="field" style="min-width:260px">
+          <label for="dishInput">Dish name</label>
+          <input type="text" id="dishInput" list="dishList" placeholder="e.g. Paneer Butter Masala" autocomplete="off">
+          <datalist id="dishList"></datalist>
+        </div>
+        <div class="field" style="max-width:170px">
+          <label for="searchLimit">Results</label>
+          <select id="searchLimit">
+            <option>6</option><option selected>9</option><option>12</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="searchBtn">🔍 Search new pics</button>
+      </div>
+      <div class="quickpicks" id="quickPicks"></div>
+      <div class="status" id="searchStatus">Type a dish and hit search to pull fresh images from the web.</div>
+      <div class="photo-grid" id="searchResults"></div>
+    </div>
+  </section>
+
+  <!-- BATCH RESULTS -->
+  <section id="results">
+    <div data-reveal>
+      <div class="eyebrow">Full batch run</div>
+      <h2 class="title">Assignment results</h2>
+      <p class="lead">Output of the automated run over the complete restaurant menu sheet.</p>
+    </div>
+    <div class="stats" id="batchStats" style="margin-top:26px" data-reveal></div>
+    <div class="gallery" id="gallery"></div>
+    <div class="actions">
+      <a class="btn btn-primary" href="processing_report.xlsx" download>↓ Download full report (Excel)</a>
+      <a class="btn btn-secondary" href="https://github.com/Shalini25sristi/food-image-agent" target="_blank" rel="noopener">View source on GitHub ↗</a>
+    </div>
+  </section>
 </main>
 
-<footer>Built with Python · OpenCV quality validation · DuckDuckGo/SerpAPI search · Google Drive API</footer>
+<footer>
+  <div class="social">
+    <a href="https://github.com/Shalini25sristi/food-image-agent" target="_blank" rel="noopener">GitHub</a>
+    <a href="assignment_menu.xlsx" download>Menu sheet</a>
+    <a href="processing_report.xlsx" download>Report</a>
+  </div>
+  Built with Python · OpenCV quality validation · DuckDuckGo / SerpAPI search · Google Drive API
+</footer>
+
+<div id="toasts"></div>
 
 <script>
-const runBtn = document.getElementById('run');
-const statusEl = document.getElementById('status');
+"use strict";
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => Array.from(r.querySelectorAll(s));
+const esc = (s) => String(s==null?"":s).replace(/[&<>"']/g, c => (
+  {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-runBtn.addEventListener('click', async () => {
-  const f = document.getElementById('file').files[0];
-  if (!f) { statusEl.className='err'; statusEl.textContent='Please choose an .xlsx file first.'; return; }
-  runBtn.disabled = true;
-  statusEl.className=''; statusEl.textContent='Agent is working — searching, validating and processing images… (can take up to a minute)';
-  try {
-    const limit = document.getElementById('limit').value;
-    const resp = await fetch('/api/run?limit=' + limit, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/octet-stream' },
-      body: f
+/* ---------- nav scroll ---------- */
+const nav = $("#nav");
+addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 20), {passive:true});
+
+/* ---------- reveal on scroll (content visible by default; JS hides only
+   off-screen elements, so a slow script can never blank the page) ---------- */
+let io = null;
+function revealAll(){
+  $$("[data-reveal]").forEach(el => { el.classList.remove("pre"); el.classList.add("revealed"); });
+}
+try{
+  if ("IntersectionObserver" in window){
+    const vh = innerHeight;
+    const pending = [];
+    $$("[data-reveal]").forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < vh * 0.9 && r.bottom > 0) el.classList.add("revealed");   // in view -> show now
+      else { el.classList.add("pre"); pending.push(el); }                    // off screen -> animate in
     });
-    if (!resp.ok) {
-      const j = await resp.json().catch(() => ({}));
-      throw new Error(j.error || ('HTTP ' + resp.status));
-    }
-    const blob = await resp.blob();
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'food_images.zip'; a.click();
-    URL.revokeObjectURL(url);
-    statusEl.className='ok';
-    statusEl.textContent='Done! Downloaded food_images.zip with the processed images and report.';
-  } catch (e) {
-    statusEl.className='err';
-    statusEl.textContent='Error: ' + e.message;
-  } finally {
-    runBtn.disabled = false;
-  }
+    io = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.remove("pre");
+          e.target.classList.add("revealed");
+          io.unobserve(e.target);
+        }
+      });
+    }, {threshold:.08, rootMargin:"0px 0px -30px 0px"});
+    pending.forEach(el => io.observe(el));
+  } else { revealAll(); }
+}catch(err){ revealAll(); }
+
+/* ---------- count up ---------- */
+function countUp(el, to, suffix=""){
+  const dur = 1100, start = performance.now();
+  (function tick(now){
+    const p = Math.min(1, (now-start)/dur);
+    const eased = 1 - Math.pow(1-p, 3);
+    el.textContent = Math.round(to*eased) + suffix;
+    if (p < 1) requestAnimationFrame(tick);
+  })(start);
+}
+const countIO = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    countUp(e.target, +e.target.dataset.count, e.target.dataset.suffix||"");
+    countIO.unobserve(e.target);
+  });
+}, {threshold:.5});
+
+/* ---------- toasts ---------- */
+function toast(msg, type="ok"){
+  const ico = {ok:"✓", err:"✕", info:"ℹ"}[type] || "✓";
+  const el = document.createElement("div");
+  el.className = "toast";
+  el.innerHTML = `<span class="t-ico" style="color:${type==='err'?'var(--bad)':type==='info'?'var(--accent-2)':'var(--good)'}">${ico}</span><span>${esc(msg)}</span>`;
+  $("#toasts").appendChild(el);
+  setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 350); }, 4200);
+}
+
+/* ---------- button ripple ---------- */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest(".btn");
+  if (!b) return;
+  const r = b.getBoundingClientRect();
+  const s = document.createElement("span");
+  const d = Math.max(r.width, r.height);
+  s.className = "ripple";
+  s.style.width = s.style.height = d + "px";
+  s.style.left = (e.clientX - r.left - d/2) + "px";
+  s.style.top  = (e.clientY - r.top  - d/2) + "px";
+  b.appendChild(s);
+  setTimeout(() => s.remove(), 600);
 });
 
-// Batch results gallery (generated at deploy time)
-fetch('results.json').then(r => r.json()).then(data => {
-  const s = document.getElementById('stats');
-  s.innerHTML =
-    `<div class="stat"><b>${data.total}</b><span>menu items</span></div>` +
-    `<div class="stat"><b>${data.succeeded}</b><span>images processed</span></div>` +
-    `<div class="stat"><b>${data.failed}</b><span>failed</span></div>`;
-  const g = document.getElementById('gallery');
-  g.innerHTML = data.samples.map(n =>
-    `<figure><img loading="lazy" src="gallery/${encodeURIComponent(n)}.jpg" alt="${n}"><figcaption>${n}</figcaption></figure>`
-  ).join('');
-}).catch(() => { document.getElementById('gallery').innerHTML = '<p>No batch results published yet.</p>'; });
+/* ---------- simulated progress ---------- */
+function startProgress(bar, seconds){
+  const el = bar.querySelector(".bar");
+  bar.classList.add("on"); el.style.width = "2%";
+  let p = 2;
+  const iv = setInterval(() => {
+    p += (95 - p) * (1 / (seconds*2));
+    el.style.width = p.toFixed(1) + "%";
+  }, 400);
+  return {
+    done(){ clearInterval(iv); el.style.width = "100%";
+      setTimeout(() => { bar.classList.remove("on"); el.style.width = "0"; }, 700); }
+  };
+}
+
+/* ---------- helpers ---------- */
+async function postXlsx(bytes, limit, format){
+  const resp = await fetch(`/api/run?limit=${limit}&format=${format}`, {
+    method:"POST", headers:{"Content-Type":"application/octet-stream"}, body: bytes
+  });
+  if (!resp.ok){
+    const j = await resp.json().catch(() => ({}));
+    throw new Error(j.error || ("HTTP " + resp.status));
+  }
+  return format === "json" ? resp.json() : resp.blob();
+}
+function resultCard(row, i){
+  const ok = (row["Status"]||"").startsWith("SUCCESS");
+  const part = (row["Status"]||"").startsWith("PARTIAL");
+  const cls = ok ? "ok" : part ? "warn" : "bad";
+  const label = ok ? "Processed" : part ? "Partial" : "Failed";
+  const sz = row.bytes ? (row.bytes/1024).toFixed(0)+" KB" : "";
+  const img = row.image
+    ? `<a href="${esc(row["Source"]||"#")}" target="_blank" rel="noopener noreferrer"><img src="${row.image}" alt="${esc(row["Food Item"])}"></a>`
+    : `<div style="height:100%;display:grid;place-items:center;color:var(--muted-2);font-size:2rem">🚫</div>`;
+  return `<div class="result" style="animation-delay:${i*80}ms">
+    <div class="thumb">${img}</div>
+    <div class="body">
+      <b title="${esc(row["Food Item"])}">${esc(row["Food Item"])}</b>
+      <span class="pill ${cls}">${label}</span><span class="sz">${sz}</span>
+    </div></div>`;
+}
+
+/* ================= INTEGRATED MENU ================= */
+let MENU = null;
+async function loadMenu(){
+  try{
+    MENU = await (await fetch("menu.json")).json();
+  }catch(e){ $("#menuFileMeta").textContent = "menu.json unavailable"; return; }
+
+  $("#menuFileMeta").textContent = `${MENU.total} dishes · ${MENU.columns.length} columns · sheet “${MENU.sheet}”`;
+  $("#menuStats").innerHTML = [
+    ["dishes", MENU.total], ["columns", MENU.columns.length], ["target px", "1800×1200"], ["max size", "<10MB"]
+  ].map(([l,v]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+
+  const chips = $("#menuChips");
+  const dl = $("#dishList");
+  const render = (filter="") => {
+    const f = filter.trim().toLowerCase();
+    const list = MENU.items.filter(x => x.toLowerCase().includes(f));
+    chips.innerHTML = list.slice(0,400).map((x,i) =>
+      `<button class="chip" style="animation-delay:${Math.min(i,30)*12}ms" data-dish="${esc(x)}">${esc(x)}</button>`).join("")
+      || `<span style="color:var(--muted);font-size:.85rem">No dishes match “${esc(filter)}”.</span>`;
+  };
+  render();
+  $("#menuFilter").addEventListener("input", e => render(e.target.value));
+
+  dl.innerHTML = MENU.items.map(x => `<option value="${esc(x)}"></option>`).join("");
+  const picks = ["Paneer Butter Masala","Chicken Tandoori","Veg Fried Rice","Butter Naan","Dal Tadka","Chicken Tikka"];
+  $("#quickPicks").innerHTML = picks.filter(p => MENU.items.includes(p)).map(p =>
+    `<button class="chip" data-dish="${esc(p)}">${esc(p)}</button>`).join("");
+}
+document.addEventListener("click", (e) => {
+  const chip = e.target.closest(".chip[data-dish]");
+  if (!chip) return;
+  $("#dishInput").value = chip.dataset.dish;
+  $("#search").scrollIntoView();
+  setTimeout(() => $("#searchBtn").click(), 450);
+});
+loadMenu();
+
+/* ================= RUN AGENT ================= */
+const runStatus = $("#runStatus");
+fetch("/api/health").then(r => r.json()).then(h => {
+  const el = $("#driveNote");
+  if (h.drive_configured){
+    el.className = "drive-note ok";
+    el.innerHTML = '<span class="dot-i"></span><span>Google Drive connected — processed images upload automatically.</span>';
+  } else {
+    el.className = "drive-note warn";
+    el.innerHTML = '<span class="dot-i"></span><span>Google Drive not configured — images are processed and saved locally. '
+      + 'Add a service-account key (<code>credentials.json</code>) and <code>DRIVE_FOLDER_ID</code> to enable uploads.</span>';
+  }
+}).catch(()=>{});
+async function runAgent(bytes, label){
+  const limit = $("#runLimit").value;
+  const prog = startProgress($("#runProgress"), limit*8);
+  runStatus.className = "status";
+  runStatus.textContent = `Running on ${label} — searching, validating and processing ${limit} item(s)…`;
+  $("#runResults").innerHTML = Array.from({length:limit}, () => `<div class="skel"></div>`).join("");
+  const t0 = performance.now();
+  try{
+    const data = await postXlsx(bytes, limit, "json");
+    prog.done();
+    const secs = ((performance.now()-t0)/1000).toFixed(1);
+    $("#runResults").innerHTML = data.results.map(resultCard).join("");
+    runStatus.className = "status ok";
+    runStatus.textContent = `${data.summary} · finished in ${secs}s`;
+    toast(`${data.succeeded}/${data.total} images processed`, "ok");
+  }catch(err){
+    prog.done();
+    $("#runResults").innerHTML = "";
+    runStatus.className = "status err";
+    runStatus.textContent = "Error: " + err.message;
+    toast(err.message, "err");
+  }
+}
+$("#runMenuBtn").addEventListener("click", async () => {
+  const btn = $("#runMenuBtn"); btn.disabled = true;
+  try{
+    runStatus.textContent = "Loading bundled spreadsheet…";
+    const buf = await (await fetch("assignment_menu.xlsx")).arrayBuffer();
+    await runAgent(buf, "integrated menu");
+  }catch(e){ runStatus.className="status err"; runStatus.textContent="Error: "+e.message; }
+  finally{ btn.disabled = false; }
+});
+$("#file").addEventListener("change", async (e) => {
+  const f = e.target.files[0]; if (!f) return;
+  await runAgent(await f.arrayBuffer(), f.name);
+});
+
+/* ================= SEARCH NEW PICS ================= */
+function photoCard(r, i){
+  const dim = (r.width && r.height) ? `${r.width}×${r.height}` : "unknown size";
+  let host = ""; try{ host = new URL(r.url).hostname.replace(/^www\./,""); }catch(_){}
+  const proxy = `/api/image?w=440&url=${encodeURIComponent(r.url)}`;
+  // Load the original CDN image first (fast, parallel); only fall back to the
+  // server-side proxy if the source blocks hotlinking.
+  return `<a class="photo" style="animation-delay:${i*40}ms" href="${esc(r.url)}" target="_blank" rel="noopener noreferrer">
+    <img src="${esc(r.url)}" alt="${esc(r.title||"food")}" referrerpolicy="no-referrer"
+         data-proxy="${esc(proxy)}"
+         onerror="if(this.dataset.f){this.closest('.photo').classList.add('broken');this.remove();}else{this.dataset.f=1;this.src=this.dataset.proxy;}">
+    <div class="overlay"><b>${esc(r.title||host||"image")}</b><span>${esc(dim)} · ${esc(host)}</span></div>
+  </a>`;
+}
+const searchCache = new Map();
+async function searchPics(){
+  const item = $("#dishInput").value.trim();
+  if (!item){ $("#searchStatus").className="status err"; $("#searchStatus").textContent="Please enter a dish name."; return; }
+  const limit = $("#searchLimit").value;
+  const key = item.toLowerCase() + "|" + limit;
+  const btn = $("#searchBtn"); btn.disabled = true;
+
+  let data = searchCache.get(key);
+  if (data){
+    $("#searchStatus").className = "status";
+    $("#searchStatus").textContent = `Showing cached results for “${item}”…`;
+  } else {
+    $("#searchStatus").className = "status";
+    $("#searchStatus").textContent = `Searching the web for “${item}”…`;
+    $("#searchResults").innerHTML = Array.from({length:Math.min(limit,9)}, () => `<div class="skel"></div>`).join("");
+  }
+  try{
+    if (!data){
+      const resp = await fetch(`/api/search?item=${encodeURIComponent(item)}&limit=${limit}`);
+      data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || ("HTTP "+resp.status));
+      searchCache.set(key, data);
+    }
+    if (!data.results.length){
+      $("#searchResults").innerHTML = "";
+      $("#searchStatus").className = "status err";
+      $("#searchStatus").textContent = "No images found — try a different name.";
+      return;
+    }
+    // Render immediately — the browser loads each image in parallel.
+    $("#searchResults").innerHTML = data.results.map(photoCard).join("");
+    $("#searchStatus").className = "status ok";
+    $("#searchStatus").textContent = `Found ${data.count} candidate image(s) for “${item}”. Hover a photo for details, click to open.`;
+    toast(`${data.count} new pictures for ${item}`, "ok");
+  }catch(e){
+    $("#searchResults").innerHTML = "";
+    $("#searchStatus").className = "status err";
+    $("#searchStatus").textContent = "Error: " + e.message;
+    toast(e.message, "err");
+  }finally{ btn.disabled = false; }
+}
+$("#searchBtn").addEventListener("click", searchPics);
+$("#dishInput").addEventListener("keydown", e => { if (e.key === "Enter") searchPics(); });
+
+/* ================= BATCH RESULTS ================= */
+fetch("results.json").then(r => r.json()).then(data => {
+  $("#batchStats").innerHTML = `
+    <div class="stat"><b data-count="${data.total}">0</b><span>menu items</span></div>
+    <div class="stat"><b data-count="${data.succeeded}">0</b><span>images processed</span></div>
+    <div class="stat"><b data-count="${data.failed}">0</b><span>failed</span></div>
+    <div class="stat"><b data-count="100" data-suffix="%">0</b><span>success rate</span></div>`;
+  $$("#batchStats [data-count]").forEach(el => countIO.observe(el));
+  $("#gallery").innerHTML = data.samples.map((n,i) =>
+    `<figure data-reveal style="transition-delay:${i*60}ms">
+       <img loading="lazy" src="gallery/${encodeURIComponent(n)}.jpg" alt="${esc(n)}"
+            onerror="this.style.display='none'">
+       <figcaption>${esc(n)}</figcaption></figure>`).join("");
+  $$("#gallery [data-reveal]").forEach(el => {
+    if (io) { el.classList.add("pre"); io.observe(el); } else { el.classList.add("revealed"); }
+  });
+}).catch(() => {
+  $("#gallery").innerHTML = '<p style="color:var(--muted)">No batch results published yet.</p>';
+});
 </script>
 </body>
 </html>

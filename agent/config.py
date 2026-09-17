@@ -25,10 +25,11 @@ class Config:
 
     # Search / validation behaviour
     max_candidates: int = 6          # how many candidate images to try per food item
+    candidate_workers: int = 4       # download+validate candidates in parallel
     min_width: int = 800             # reject images smaller than this
     min_height: int = 533
     blur_threshold: float = 80.0     # Laplacian variance below this => blurry
-    download_timeout: int = 25
+    download_timeout: int = 10
     max_download_mb: int = 30
     best_effort: bool = True         # if no image passes validation, use the best one anyway
 
