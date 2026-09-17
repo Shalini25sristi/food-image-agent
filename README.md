@@ -1,5 +1,7 @@
 # AI Agent for Automated Food Image Collection & Processing
 
+**[Live demo -> https://food-image-agent.vercel.app](https://food-image-agent.vercel.app)**
+
 Reads food item names from an Excel file, finds a suitable image online,
 checks its quality automatically, processes it to menu spec (1800x1200 px,
 <10 MB JPG), renames it with the exact food item name and uploads it to a
@@ -21,8 +23,9 @@ Rename -> Google Drive Upload -> Report**
   saliency-based framing analysis (subject centred, not excessively
   zoomed in, not heavily cropped at the edges). Watermarked stock-photo
   sites (freepik, shutterstock, istock, ...) are filtered out.
-- **Automatic re-selection** - if the first candidate fails validation,
-  the agent keeps trying the next candidates and picks the best one.
+- **Automatic re-selection** - candidates are downloaded/validated in
+  parallel and the best-scoring one that passes is used (best-effort
+  fallback if none pass).
 - **Smart processing** (Pillow): saliency-aware crop to the 3:2 menu
   ratio, resize to exactly 1800x1200, JPEG compressed below 10 MB.
 - **Exact renaming** to the food item name (`Paneer Butter Masala.jpg`).
@@ -32,8 +35,12 @@ Rename -> Google Drive Upload -> Report**
   cleaned to `Paneer Tikka Masala` before searching.
 - **Report** - `processing_report.xlsx` / `.csv` with Food Item,
   Image Found, Image Processed, Uploaded, Source, Status.
-- **Resilient** - per-item error isolation; one failure never stops the
-  run; report is saved after every item.
+- **Resilient & fast** - per-item error isolation; one failure never stops
+  the run; report is saved after every item. The web demo runs items and
+  candidate downloads concurrently with a hard time budget.
+- **Polished web demo** - bundled menu, one-click runs, live "search new
+  pictures" with a server-side image proxy, inline previews, animations and
+  a Drive-status banner.
 
 ## Setup
 
@@ -56,6 +63,8 @@ Latest full run over the assignment sheet: **260/260 items processed, 0 failures
 
 ## Live web demo (Vercel)
 
+**Deployed:** https://food-image-agent.vercel.app
+
 A serverless wrapper around the agent lives in `index.py` with a polished
 single-page front-end in `public/`:
 
@@ -64,12 +73,14 @@ single-page front-end in `public/`:
   upload your own `.xlsx`.
 - `POST /api/run?limit=N&format=json|zip` - raw `.xlsx` body -> JSON with
   base64 previews + report rows (default UI), or a ZIP with full images +
-  report (`format=zip`). Capped at 5 items per run to fit the 60 s limit;
-  Drive upload is disabled in the demo.
+  report (`format=zip`). Capped at 5 items per run; dishes and candidate
+  downloads run concurrently so a run finishes in seconds.
 - `GET /api/search?item=NAME&limit=N` - live image search for one dish,
-  returns candidate URLs (powers the "Search new pics" button).
-- `GET /api/image?url=...&w=440` - server-side image proxy + thumbnail; makes
-  search results display reliably even when the source blocks hotlinking.
+  returns candidate URLs (powers the "Search new pics" button). Results are
+  cached.
+- `GET /api/image?url=...&w=440` - server-side image proxy + thumbnail;
+  makes search results display reliably even when the source blocks
+  hotlinking (the UI loads originals first and only falls back to this).
 - `GET /api/health` - status JSON (includes whether Google Drive is configured).
 
 The demo disables Google Drive uploads and saves images locally; the UI shows
@@ -77,13 +88,10 @@ a Drive status banner. Set `DRIVE_FOLDER_ID` + a service-account
 `credentials.json` and Drive uploads become active in the CLI (the serverless
 demo stays read-only by design).
 
-Candidate downloads run in parallel and saliency analysis works on a
-downscaled copy, so a 3-5 item demo run completes in well under a minute.
-
 Deploy:
 
 ```bash
-vercel --prod        # repo already contains vercel.json
+npx vercel@latest --prod        # repo already contains vercel.json
 ```
 
 The heavy lifting (hundreds of items) stays a CLI job; the web endpoint is a
@@ -129,6 +137,21 @@ reliability set either in `.env`:
 
 Providers are tried in that order and fall back automatically.
 
+## Tech stack
+
+Python 3.12 · pandas / openpyxl · Pillow · OpenCV (saliency, blur) ·
+requests · DuckDuckGo / SerpAPI / Google Custom Search · Google Drive API ·
+Vercel serverless (Python runtime) · vanilla HTML/CSS/JS front-end.
+
+## Local web preview
+
+```bash
+python .devserver.py        # serves public/ + the API at http://localhost:3000
+```
+
+(On Vercel, `public/` is served statically and `index.py` runs as the
+serverless function.)
+
 ## Project structure
 
 ```
@@ -141,10 +164,17 @@ agent/
   process.py            saliency-aware crop, resize, compress
   drive.py              Google Drive upload (service account)
   report.py             Excel/CSV processing report
-  pipeline.py           end-to-end orchestration per food item
-index.py                Vercel serverless function (web demo)
-public/                 demo front-end + batch-run gallery
+  pipeline.py           end-to-end orchestration (parallel + time-bounded)
+index.py                Vercel serverless function (web demo API)
+public/
+  index.html            demo UI (animations, integrated menu, image search)
+  menu.json             the 260 bundled dish names
+  assignment_menu.xlsx  the bundled assignment sheet
+  favicon.svg           site icon
+  gallery/ + results.json   pre-computed batch-run gallery
+  processing_report.*   full 260-item report (Excel + CSV)
 vercel.json             Vercel configuration
+.devserver.py           local preview server (gitignored; serves public/ + API)
 sample_input.xlsx       sample input
 Assignment - Ai agent - Sheet1.xlsx   real menu sheet (260 items)
 ```
@@ -161,14 +191,15 @@ Each downloaded candidate is scored on:
   the agent checks that the subject is roughly centred and is not cut by
   the frame edges or filling the entire frame (excessively zoomed)
 
-The agent tries candidates in order of (meets target size, title-relevance,
-resolution) and uses the first one that passes - or the best-scoring one
-in best-effort mode.
+The agent ranks candidates by (meets target size, title-relevance,
+resolution), validates them in parallel and uses the **best-scoring one that
+passes** - or the best-scoring one overall in best-effort mode.
 
 ## Report columns
 
 `Food Item | Image Found | Image Processed | Uploaded | Source | Status`
 
-Status values: `SUCCESS - <drive link>`, `SUCCESS - saved locally`,
+Status values: `SUCCESS - <drive link>`,
+`SUCCESS - processed & saved locally (Drive upload not configured)`,
 `PARTIAL: ...`, `FAILED: ...` (with reason). Quality warnings from
 best-effort mode are appended to the status.
